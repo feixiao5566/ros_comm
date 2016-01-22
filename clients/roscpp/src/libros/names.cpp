@@ -103,13 +103,14 @@ std::string clean(const std::string& name)
   size_t pos = clean.find("//");
   while (pos != std::string::npos)
   {
-    clean.erase(pos, 1);
-    pos = clean.find("//", pos);
+    clean.erase(pos, 1);    //防止/加重复了,删除重复的一个
+    //eraser:删除从pos开始的n个字符，比如erase(0,1)就是删除第一个字符
+    pos = clean.find("//", pos);    //找后面还有没有
   }
 
-  if (*clean.rbegin() == '/')
+  if (*clean.rbegin() == '/')   //清除末尾的/    rbegin()指向末尾的下一位置,而其内容为末尾元素的值
   {
-    clean.erase(clean.size() - 1, 1);
+    clean.erase(clean.size() - 1, 1);   //长度减去清除掉的末尾/
   }
 
   return clean;
@@ -139,10 +140,10 @@ std::string resolve(const std::string& name, bool _remap)
   return s;
 }
 
-std::string resolve(const std::string& ns, const std::string& name, bool _remap)
+std::string resolve(const std::string& ns, const std::string& name, bool _remap)    //去掉全名中重复的/
 {
   std::string error;
-  if (!validate(name, error))
+  if (!validate(name, error))   //检测名字有效
   {
   	throw InvalidNameException(error);
   }
@@ -151,32 +152,35 @@ std::string resolve(const std::string& ns, const std::string& name, bool _remap)
   {
     if (ns.empty())
     {
-      return "/";
+      return "/";   //命名空间空的,返回/
     }
 
-    if (ns[0] == '/')
+    if (ns[0] == '/')   //命名空间第一个是空的
     {
-      return ns;
+      return ns;    //返回命名空间,说明它没有命名空间,节点名就是/name
     }
 
-    return append("/", ns);
+    return append("/", ns); //append()函数用来将一个字符串连接在另一个字符串的后面,所以这最后就输出/ns
   }
 
-  std::string copy = name;
+  std::string copy = name;  //名字是节点名
 
   if (copy[0] == '~')
   {
-    copy = append(this_node::getName(), copy.substr(1));
+    copy = append(this_node::getName(), copy.substr(1));    //如果名字是从主文件夹来的,给它前面加上节点名,后面跟的去掉~的节点名名字
+    //->不太明白,这前后两个name是同一个节点名啊
+    //substr()返回本字符串的一个子串，从index开始，长num个字符。
+    //如果没有指定，将是默认值 string::npos。这样，substr()函数将简单的返回从index开始的剩余的字符串
   }
 
-  if (copy[0] != '/')
+  if (copy[0] != '/')   //如果名字不是以/开头
   {
-    copy = append("/", append(ns, copy));
+    copy = append("/", append(ns, copy)); //全名是/+ns+name
   }
 
-  copy = clean(copy);
+  copy = clean(copy);   //防止在拼这个全名时候,重复添加/
 
-  if (_remap)
+  if (_remap)   //
   {
     copy = remap(copy);
   }
