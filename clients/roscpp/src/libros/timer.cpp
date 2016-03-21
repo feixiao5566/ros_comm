@@ -38,41 +38,48 @@ Timer::Impl::Impl()
 
 Timer::Impl::~Impl()
 {
-  ROS_DEBUG("Timer deregistering callbacks.");
+  ROS_DEBUG("Timer deregistering callbacks.");  //定时器注销回调
   stop();
 }
 
 bool Timer::Impl::isValid()
 {
-  return !period_.isZero();
+  return !period_.isZero(); //时间为空
 }
 
+/**
+ * \brief 开始定时器.如果定时器已经开始了就什么都不做.
+ */
 void Timer::Impl::start()
 {
-  if (!started_)
+  if (!started_)    //started是个flag
   {
     VoidConstPtr tracked_object;
-    if (has_tracked_object_)
+    if (has_tracked_object_)    //追踪到目标
     {
-      tracked_object = tracked_object_.lock();
+      tracked_object = tracked_object_.lock();  //追踪到目标,上锁
     }
 
     timer_handle_ = TimerManager<Time, Duration, TimerEvent>::global().add(period_, callback_, callback_queue_, tracked_object, oneshot_);
-    started_ = true;
+    started_ = true;    //开始,TimeManager::global().add
   }
 }
-
+/**
+ * \brief 停止定时器. 一旦回调函数返回了,就不会再有回调被调用.如果定时器已经停止了就什么都不做.
+ */
 void Timer::Impl::stop()
 {
   if (started_)
   {
     started_ = false;
     TimerManager<Time, Duration, TimerEvent>::global().remove(timer_handle_);
-    timer_handle_ = -1;
+    timer_handle_ = -1;     //开始,TimeManager::global().remove
   }
 }
-
-bool Timer::Impl::hasPending()
+/**
+ * \brief 无论定时器是否已经被挂起事件被挂起都返回Returns whether or not the timer has any pending events to call.
+ */
+bool Timer::Impl::hasPending()  //挂起
 {
   if (!isValid() || timer_handle_ == -1)
   {
@@ -81,7 +88,10 @@ bool Timer::Impl::hasPending()
 
   return TimerManager<Time, Duration, TimerEvent>::global().hasPending(timer_handle_);
 }
-
+/**
+ * \brief 设置该定时器时间段
+ * \param 复位 重置计时器.如果是,定时器会忽略已经走过的时间,下一个回调发生的事件是now()+period
+ */
 void Timer::Impl::setPeriod(const Duration& period, bool reset)
 {
   period_ = period;

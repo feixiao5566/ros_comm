@@ -658,7 +658,7 @@ uint32_t Subscription::handleMessage(const SerializedMessage& m, bool ser, bool 
 
   // measure statistics
   statistics_.callback(connection_header, name_, link->getCallerID(), m, link->getStats().bytes_received_, receipt_time, drops > 0);
-
+//如果该链接被锁存,存储该消息一边新的sub来时能迅速传递
   // If this link is latched, store off the message so we can immediately pass it to new subscribers later
   if (link->isLatched())
   {

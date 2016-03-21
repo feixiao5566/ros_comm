@@ -27,11 +27,18 @@
 
 #include "ros/wall_timer.h"
 #include "ros/timer_manager.h"
-
+//Wall Time是如何获取到系统时间的?
+/**
+ * \brief 管理一个壁钟定时器回调
+ *
+ * 壁钟定时器是通过调用NodeHandle::createWallTimer()创建的, 或是从一个克隆过来的
+ *一旦所有的壁钟定时器副本都指明已经超时, 这时与handle建立联系的回调函数将停止调用
+ *
+ */
 namespace ros
 {
 
-WallTimer::Impl::Impl()
+WallTimer::Impl::Impl() //猜测它的作用是初始化,很多个文件中都有
   : started_(false)
   , timer_handle_(-1)
 { }
@@ -42,7 +49,7 @@ WallTimer::Impl::~Impl()
   stop();
 }
 
-void WallTimer::Impl::start()
+void WallTimer::Impl::start()   //开始
 {
   if (!started_)
   {
@@ -56,7 +63,7 @@ void WallTimer::Impl::start()
   }
 }
 
-void WallTimer::Impl::stop()
+void WallTimer::Impl::stop()    //停止
 {
   if (started_)
   {
@@ -66,12 +73,12 @@ void WallTimer::Impl::stop()
   }
 }
 
-bool WallTimer::Impl::isValid()
+bool WallTimer::Impl::isValid() //是否为空
 {
   return !period_.isZero();
 }
 
-bool WallTimer::Impl::hasPending()
+bool WallTimer::Impl::hasPending()  //已经挂起
 {
   if (!isValid() || timer_handle_ == -1)
   {
@@ -81,14 +88,14 @@ bool WallTimer::Impl::hasPending()
   return TimerManager<WallTime, WallDuration, WallTimerEvent>::global().hasPending(timer_handle_);
 }
 
-void WallTimer::Impl::setPeriod(const WallDuration& period, bool reset)
+void WallTimer::Impl::setPeriod(const WallDuration& period, bool reset) //设定时期段
 {
   period_ = period;
   TimerManager<WallTime, WallDuration, WallTimerEvent>::global().setPeriod(timer_handle_, period, reset);
 }
 
 
-WallTimer::WallTimer(const WallTimerOptions& ops)
+WallTimer::WallTimer(const WallTimerOptions& ops)   //壁钟时间的构造函数
 : impl_(new Impl)
 {
   impl_->period_ = ops.period;
@@ -99,7 +106,7 @@ WallTimer::WallTimer(const WallTimerOptions& ops)
   impl_->oneshot_ = ops.oneshot;
 }
 
-WallTimer::WallTimer(const WallTimer& rhs)
+WallTimer::WallTimer(const WallTimer& rhs)  //拷贝函数
 {
   impl_ = rhs.impl_;
 }

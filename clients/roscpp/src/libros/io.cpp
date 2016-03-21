@@ -46,6 +46,9 @@
   #include <fcntl.h> // for non-blocking configuration
 #endif
 
+/*
+ * 文件作用:将socket轮询跨平台
+*/
 /*****************************************************************************
 ** Namespaces
 *****************************************************************************/
@@ -54,15 +57,17 @@ namespace ros {
 
 int last_socket_error() {
 	#ifdef WIN32
-		return WSAGetLastError();
+        return WSAGetLastError();//GetLastError返回的值通过在api函数中调用SetLastError或SetLastErrorEx设置。函数并无必要设置上一次错误信息，
+        //所以即使一次GetLastError调用返回的是零值，也不能担保函数已成功执行。只有在函数调用返回一个错误结果时，这个函数指出的错误结果才是有效的。
 	#else
 		return errno;
 	#endif
 }
 const char* last_socket_error_string() {
 	#ifdef WIN32
-		// could fix this to use FORMAT_MESSAGE and print a real string later,
+        // could fix this to use FORMAT_MESSAGE and print a real string later,可以修复格式化消息并返回一个实际的字符串,但无高优先级
 		// but not high priority.
+    //FormatMessage是一个Windows API函数。它的功能就是将GetLastError函数得到的错误信息（这个错误信息是数字代号）转化成字符串信息的函数
 		std::stringstream ostream;
 		ostream << "WSA Error: " << WSAGetLastError();
 		return ostream.str().c_str();
@@ -91,7 +96,7 @@ bool last_socket_error_is_would_block() {
 ** Service Robotics/Libssh Functions
 *****************************************************************************/
 /**
- * @brief A cross platform polling function for sockets.
+ * @brief A cross platform polling function for sockets.跨平台的轮询函数socket
  *
  * Windows doesn't have a polling function until Vista (WSAPoll) and even then
  * its implementation is not supposed to be great. This works for a broader
@@ -101,7 +106,7 @@ bool last_socket_error_is_would_block() {
  * @param timeout - timeout in milliseconds.
  * @return int : -1 on error, 0 on timeout, +ve number of structures with received events.
  */
-int poll_sockets(socket_pollfd *fds, nfds_t nfds, int timeout) {
+int poll_sockets(socket_pollfd *fds, nfds_t nfds, int timeout) {//Socket 轮询
 #if defined(WIN32)
 	fd_set readfds, writefds, exceptfds;
 	struct timeval tv, *ptv;
@@ -114,14 +119,14 @@ int poll_sockets(socket_pollfd *fds, nfds_t nfds, int timeout) {
 		return -1;
 	}
 
-	FD_ZERO (&readfds);
+    FD_ZERO (&readfds);//将指定的文件描述符集清空，在对文件描述符集合进行设置前，必须对其进行初始化，如果不清空，由于在系统分配内存空间后，通常并不作清空处理，所以结果是不可知的。
 	FD_ZERO (&writefds);
 	FD_ZERO (&exceptfds);
 
 	/*********************
 	** Compute fd sets
 	**********************/
-	// also find the largest descriptor.
+    // also find the largest descriptor.找到最多打得描述符集
 	for (rc = -1, max_fd = 0, i = 0; i < nfds; i++) {
 		if (fds[i].fd == INVALID_SOCKET) {
 			continue;
@@ -149,7 +154,7 @@ int poll_sockets(socket_pollfd *fds, nfds_t nfds, int timeout) {
 		return -1;
 	}
 	/*********************
-	** Setting the timeout
+    ** Setting the timeout设置超时
 	**********************/
 	if (timeout < 0) {
 		ptv = NULL;
@@ -216,22 +221,43 @@ int poll_sockets(socket_pollfd *fds, nfds_t nfds, int timeout) {
 	}
 	return rc;
 #else
-	// use an existing poll implementation
+    // use an existing poll implementation使用现有轮询机制
 	int result = poll(fds, nfds, timeout);
 	if ( result < 0 ) {
-		// EINTR means that we got interrupted by a signal, and is not an error
+        // EINTR means that we got interrupted by a signal, and is not an errorEINTR意味着我们被信号量中断,而不是出错
 		if(errno == EINTR) {
 			result = 0;
 		}
 	}
 	return result;
-#endif // poll_sockets functions
+#endif // poll_sockets functions 轮询socket函数
 }
+/*1、非阻塞套接字在connect时，如果没有完成会返回SOCKET_ERROR，
+而不是INVALID_SOCKET：
+#define INVALID_SOCKET  (SOCKET)(~0)
+#define SOCKET_ERROR            (-1)
+如果是SOCKET_ERROR，则通过判断WSAGetLastError()的返回值是否为WSAEWOULDBLOCK来判断是否继续connect。
+也就是继续：
+Sleep(1000);
+continue;
+如果设置为阻塞模式，则直到connet成功或超时才返回。
+2、在一个TCP套接口被设置为非阻塞之后调用connect,connect会立即返回SOCKET_ERROR错误,表示连接操作正在进行中,但是仍未完成;同时TCP的三路握手操作继续进行;在这之后,我们可以调用select来检查这个链接是否建立成功。
+3、非阻塞connect有三种用途:
+
+
+1.我们可以在三路握手的同时做一些其它的处理.connect操作要花一个往返时间完成,而且可以是在任何地方,从几个毫秒的局域网到几百毫秒或几秒的广域网.在这段时间内我们可能有一些其他的处理想要执行;
+
+
+2.可以用这种技术同时建立多个连接.在Web浏览器中很普遍;
+
+3.由于我们使用select来等待连接的完成,因此我们可以给select设置一个时间限制,从而缩短connect的超时时间.在大多数实现
+中,connect的超时时间在75秒到几分钟之间.有时候应用程序想要一个更短的超时时间,使用非阻塞connect就是一种方法。
+*/
 /*****************************************************************************
 ** Socket Utilities
 *****************************************************************************/
 /**
- * Sets the socket as non blocking.
+ * Sets the socket as non blocking.将socket设置为非阻塞机制
  * @return int : 0 on success, WSAGetLastError()/errno on failure.
  */
 int set_non_blocking(socket_fd_t &socket) {
@@ -251,7 +277,7 @@ int set_non_blocking(socket_fd_t &socket) {
 }
 
 /**
- * @brief Close the socket.
+ * @brief Close the socket.关闭Socket
  *
  * @return int : 0 on success, -1 on failure.
  */
@@ -275,13 +301,13 @@ int close_socket(socket_fd_t &socket) {
 ** Signal Pair
 *****************************************************************************/
 /**
- * This code is primarily from the msdn socket tutorials.
- * @param signal_pair : a pair of sockets linked to each other over localhost.
+ * This code is primarily from the msdn socket tutorials.这段代码是MSDNSocket教程的
+ * @param signal_pair : a pair of sockets linked to each other over localhost.两个sockets通过localhost互联
  * @return 0 on success, -1 on failure.
  */
 int create_signal_pair(signal_fd_t signal_pair[2]) {
 #ifdef WIN32 // use a socket pair
-	signal_pair[0] = INVALID_SOCKET;
+    signal_pair[0] = INVALID_SOCKET;//把socket设置成无效套接字
 	signal_pair[1] = INVALID_SOCKET;
 
     union {
@@ -291,7 +317,7 @@ int create_signal_pair(signal_fd_t signal_pair[2]) {
     socklen_t addrlen = sizeof(a.inaddr);
 
     /*********************
-	** Listen Socket
+    ** Listen Socket监听socket
 	**********************/
 	socket_fd_t listen_socket = INVALID_SOCKET;
     listen_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -299,7 +325,7 @@ int create_signal_pair(signal_fd_t signal_pair[2]) {
 		return -1;
 	}
 
-    // allow it to be bound to an address already in use - do we actually need this?
+    // allow it to be bound to an address already in use - do we actually need this?让他能绑定到已有的地址-如果你不需要,干嘛写啊
     int reuse = 1;
     if (setsockopt(listen_socket, SOL_SOCKET, SO_REUSEADDR, (char*) &reuse, (socklen_t) sizeof(reuse)) == SOCKET_ERROR ) {
     	::closesocket(listen_socket);
@@ -331,7 +357,7 @@ int create_signal_pair(signal_fd_t signal_pair[2]) {
     /*********************
 	** Connection
 	**********************/
-    // do we need io overlapping?
+    // do we need io overlapping重叠? 重叠模型的基本设计原理便是让应用程序使用一个重叠的数据结构，一次投递一个或多个Winsock I/O请求
     // DWORD flags = (make_overlapped ? WSA_FLAG_OVERLAPPED : 0);
     DWORD overlapped_flag = 0;
     signal_pair[0] = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, overlapped_flag);
@@ -357,9 +383,9 @@ int create_signal_pair(signal_fd_t signal_pair[2]) {
     	return -1;
     }
 	/*********************
-	** Nonblocking
+    ** Nonblocking非阻塞
 	**********************/
-    // should we do this or should we set io overlapping?
+    // should we do this or should we set io overlapping?应该重叠IO吗?
     if ( (set_non_blocking(signal_pair[0]) != 0) || (set_non_blocking(signal_pair[1]) != 0)  ) {
 		::closesocket(listen_socket);
 		::closesocket(signal_pair[0]);

@@ -42,28 +42,28 @@ namespace ros
 namespace master
 {
 
-uint32_t g_port = 0;
-std::string g_host;
-std::string g_uri;
-ros::WallDuration g_retry_timeout;
+uint32_t g_port = 0;    //全局的port
+std::string g_host;        //全局的主机
+std::string g_uri;          //全局的uri
+ros::WallDuration g_retry_timeout;      //重试时间段
 
 void init(const M_string& remappings)
 {
-  M_string::const_iterator it = remappings.find("__master");
+  M_string::const_iterator it = remappings.find("__master");        //找master
   if (it != remappings.end())
   {
     g_uri = it->second;
   }
 
-  if (g_uri.empty())
+  if (g_uri.empty())    //如果网址uri是空的,找环境uri
   {
     char *master_uri_env = NULL;
     #ifdef _MSC_VER
-      _dupenv_s(&master_uri_env, NULL, "ROS_MASTER_URI");
+      _dupenv_s(&master_uri_env, NULL, "ROS_MASTER_URI");       //返回环境变量
     #else
       master_uri_env = getenv("ROS_MASTER_URI");
     #endif
-    if (!master_uri_env)
+    if (!master_uri_env)        //如果环境uri也是空的,报错
     {
       ROS_FATAL( "ROS_MASTER_URI is not defined in the environment. Either " \
                  "type the following or (preferrably) add this to your " \
@@ -75,21 +75,21 @@ void init(const M_string& remappings)
       ROS_BREAK();
     }
 
-    g_uri = master_uri_env;
+    g_uri = master_uri_env; //环境uri不空,把它给全局uri
 
 #ifdef _MSC_VER
     // http://msdn.microsoft.com/en-us/library/ms175774(v=vs.80).aspx
-    free(master_uri_env);
+    free(master_uri_env);   //释放临时指针
 #endif
   }
 
-  // Split URI into
-  if (!network::splitURI(g_uri, g_host, g_port))
+  // Split URI into     就是分析出网址 主机 端口号
+  if (!network::splitURI(g_uri, g_host, g_port))    //分析网址,port是:之后的host是/之后的
   {
     ROS_FATAL( "Couldn't parse the master URI [%s] into a host:port pair.", g_uri.c_str());
     ROS_BREAK();
   }
-}
+}//end of init
 
 const std::string& getHost()
 {
@@ -141,7 +141,7 @@ bool getTopics(V_TopicInfo& topics)
   }
 
   return true;
-}
+}   //end of getTopics
 
 bool getNodes(V_string& nodes)
 {
@@ -175,7 +175,7 @@ bool getNodes(V_string& nodes)
 #if defined(__APPLE__)
 boost::mutex g_xmlrpc_call_mutex;
 #endif
-
+//connect with master,然后干啥了我不想看了...
 bool execute(const std::string& method, const XmlRpc::XmlRpcValue& request, XmlRpc::XmlRpcValue& response, XmlRpc::XmlRpcValue& payload, bool wait_for_master)
 {
   ros::WallTime start_time = ros::WallTime::now();
@@ -190,7 +190,7 @@ bool execute(const std::string& method, const XmlRpc::XmlRpcValue& request, XmlR
   {
     bool b = false;
     {
-#if defined(__APPLE__)
+#if defined(__APPLE__)  //互斥锁,占用资源低
       boost::mutex::scoped_lock lock(g_xmlrpc_call_mutex);
 #endif
 

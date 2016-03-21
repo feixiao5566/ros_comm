@@ -29,7 +29,7 @@
 #include "ros/publication.h"
 
 #include <boost/bind.hpp>
-
+//subscriberLink的作用是,检测subscriber的数据类型,md5的值等一系列
 namespace ros
 {
 
@@ -43,7 +43,7 @@ SubscriberLink::~SubscriberLink()
 {
 
 }
-
+//验证数据类型
 bool SubscriberLink::verifyDatatype(const std::string &datatype)
 {
   PublicationPtr parent = parent_.lock();
@@ -54,7 +54,7 @@ bool SubscriberLink::verifyDatatype(const std::string &datatype)
 
     return false;
   }
-
+//这句可恶的话❀
   if (datatype != parent->getDataType())
   {
     ROS_ERROR( "tried to send a message with type %s on a " \
@@ -65,7 +65,7 @@ bool SubscriberLink::verifyDatatype(const std::string &datatype)
 
   return true;
 }
-
+//这个可怕的话❀
 const std::string& SubscriberLink::getMD5Sum()
 {
   PublicationPtr parent = parent_.lock();

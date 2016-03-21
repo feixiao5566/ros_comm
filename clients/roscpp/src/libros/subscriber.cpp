@@ -60,7 +60,7 @@ namespace ros
 
   Subscriber::Subscriber(const std::string& topic, const NodeHandle& node_handle, 
 			 const SubscriptionCallbackHelperPtr& helper)
-  : impl_(new Impl)
+  : impl_(new Impl) //是个智能指针,干啥的待定 类
   {
     impl_->topic_ = topic;
     impl_->node_handle_ = NodeHandlePtr(new NodeHandle(node_handle));

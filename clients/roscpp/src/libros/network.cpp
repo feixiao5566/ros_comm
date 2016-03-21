@@ -45,31 +45,32 @@ namespace network
 {
 
 std::string g_host;
-uint16_t g_tcpros_server_port = 0;
+uint16_t g_tcpros_server_port = 0;  //tcp
 
 const std::string& getHost()
 {
   return g_host;
 }
-
-bool splitURI(const std::string& uri, std::string& host, uint32_t& port)
+//我已经在看URI和URL的译名处疯狂了,总的来说,常规意义的网址是URI,它包含URL和URN
+bool splitURI(const std::string& uri, std::string& host, uint32_t& port)    //分析网址
 {
-  // skip over the protocol if it's there
+  // skip over the protocol if it's there如果它存在,跳过该协议  跳过http协议==
   if (uri.substr(0, 7) == std::string("http://"))
     host = uri.substr(7);
   else if (uri.substr(0, 9) == std::string("rosrpc://"))
     host = uri.substr(9);
-  // split out the port
-  std::string::size_type colon_pos = host.find_first_of(":");
+  // split out the port      分析出端口
+  std::string::size_type colon_pos = host.find_first_of(":");   //colon_pos就是端口啦
   if (colon_pos == std::string::npos)
     return false;
-  std::string port_str = host.substr(colon_pos+1);
+  std::string port_str = host.substr(colon_pos+1);  //port_str存放端口号之后的
   std::string::size_type slash_pos = port_str.find_first_of("/");
   if (slash_pos != std::string::npos)
-    port_str = port_str.erase(slash_pos);
+    port_str = port_str.erase(slash_pos);   //port是留下了:之后的全部
   port = atoi(port_str.c_str());
-  host = host.erase(colon_pos);
+  host = host.erase(colon_pos);     //host是留下/之后全部
   return true;
+  //eraser(_pos, _n)从_pos位置移出n个值,默认_pos是0,默认_n是全部
 }
 
 uint16_t getTCPROSPort()

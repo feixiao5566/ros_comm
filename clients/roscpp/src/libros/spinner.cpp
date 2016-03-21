@@ -33,44 +33,56 @@
 #include <boost/thread/recursive_mutex.hpp>
 
 namespace {
-  boost::recursive_mutex spinmutex;
-}
+  boost::recursive_mutex spinmutex;     //recursive_mutex比起mutex，最主要的好处就是降低了死锁的可能性。可重入的互斥锁
+}//recursive_mutex是不能重入的.一个线程只能用它锁一次.否则会死锁
 
 namespace ros
 {
 
-
+//单线程自旋
 void SingleThreadedSpinner::spin(CallbackQueue* queue)
 {
-  boost::recursive_mutex::scoped_try_lock spinlock(spinmutex);
-  if(!spinlock.owns_lock()) {
+  boost::recursive_mutex::scoped_try_lock spinlock(spinmutex);//加锁
+  if(!spinlock.owns_lock()) {//用于探测unique_lock是否管理着一个互斥锁且其处于上锁状态。bool operate bool() 与owns_lock等同。
     ROS_ERROR("SingleThreadedSpinner: You've attempted to call spin "
               "from multiple threads.  Use a MultiThreadedSpinner instead.");
     return;
   }
 
-  ros::WallDuration timeout(0.1f);
+  ros::WallDuration timeout(0.1f);  //设置超时时间为0.1
 
-  if (!queue)
+  if (!queue)   //如果回调队列不为空,读取全局回调队列
   {
     queue = getGlobalCallbackQueue();
   }
-
+  /** nodehandle.ok() 检测是否是时候该退出了
+   *
+   * 这个方法是检测是否ros::ok()为真同时shutdown()没有被当前的NH调用,来看他是不是时候该退出了.
+   *  一旦ros::shutdown()或者Nodehandle::shutdown()被调用时,ok()返回 false
+   *
+   */
   ros::NodeHandle n;
-  while (n.ok())
+  while (n.ok())    //
   {
+   /**
+    *时间:可以指定一个在返回前等待回调可用的时间
+    * \brief 调用队列中所有当前回调函数. 如果一个回调函数调用条件不满足,将会被重新放回回调队列中.
+    */
     queue->callAvailable(timeout);
   }
 }
-
-MultiThreadedSpinner::MultiThreadedSpinner(uint32_t thread_count)
+/**
+ * \brief 多线程自旋的自旋锁.
+ * \param thread_count是调用回调函数所用的线程数 , 0将自动使用,当你的系统会有很多硬件线程
+ */
+MultiThreadedSpinner::MultiThreadedSpinner(uint32_t thread_count)//多线程自旋
 : thread_count_(thread_count)
 {
 }
-
+//多线程锁 ros::spin会自动调用多线程
 void MultiThreadedSpinner::spin(CallbackQueue* queue)
 {
-  boost::recursive_mutex::scoped_try_lock spinlock(spinmutex);
+  boost::recursive_mutex::scoped_try_lock spinlock(spinmutex);//加锁
   if (!spinlock.owns_lock()) {
     ROS_ERROR("MultiThreadeSpinner: You've attempted to call ros::spin "
               "from multiple threads... "
